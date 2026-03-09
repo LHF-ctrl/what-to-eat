@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今天吃什么？</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+        }
+
+        .main-wrapper {
+            display: flex;
+            gap: 20px;
+            max-width: 1100px;
+            width: 100%;
+            align-items: flex-start;
+        }
+
+        .container {
+            background: linear-gradient(145deg, #1e1e2f 0%, #2a2a4a 100%);
+            border-radius: 24px;
+            padding: 40px;
+            flex: 3;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5), 
+                        0 0 40px rgba(102, 126, 234, 0.1),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        h1 {
+            text-align: center;
+            color: #fff;
+            margin-bottom: 30px;
+            font-size: 2.2rem;
+            text-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+            letter-spacing: 2px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 10px;
+            color: #a0a0c0;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            font-size: 16px;
+            color: #fff;
+            transition: all 0.3s;
+        }
+
+        .input-group input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            box-shadow: 0 0 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-primary:active {
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            color: #c0c0e0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .result {
+            text-align: center;
+            padding: 35px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+            border-radius: 16px;
+            margin-top: 20px;
+            display: none;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .result.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .dish-name {
+            font-size: 2.2rem;
+            color: #fff;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .dish-category {
+            color: #a0a0c0;
+            font-size: 1.1rem;
+        }
+
+        .manage-section {
+            margin-top: 30px;
+            padding-top: 25px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .manage-section h3 {
+            margin-bottom: 15px;
+            color: #e0e0f0;
+            font-size: 1rem;
+        }
+
+        .add-dish-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .add-dish-form input {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            font-size: 14px;
+            color: #fff;
+            transition: all 0.3s;
+        }
+
+        .add-dish-form input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .add-dish-form input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .add-dish-form select {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            font-size: 14px;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .add-dish-form select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .add-dish-form select option {
+            background: #1e1e2f;
+            color: #fff;
+        }
+
+        .btn-small {
+            padding: 12px 24px;
+            font-size: 14px;
+        }
+
+        .dish-list {
+            max-height: 220px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .dish-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .dish-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+
+        .dish-list::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.5);
+            border-radius: 3px;
+        }
+
+        .dish-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            transition: background 0.2s;
+        }
+
+        .dish-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .dish-item:last-child {
+            border-bottom: none;
+        }
+
+        .dish-item span {
+            color: #e0e0f0;
+        }
+
+        .dish-item .category-tag {
+            font-size: 11px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            margin-left: 10px;
+        }
+
+        .btn-delete {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .btn-delete:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .stats {
+            text-align: center;
+            color: #707090;
+            font-size: 14px;
+            margin-top: 15px;
+        }
+
+        .like-section {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-like {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 28px;
+            background: linear-gradient(135deg, #ff6b9d 0%, #ff8a80 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3);
+        }
+
+        .btn-like:hover {
+            transform: scale(1.08);
+            box-shadow: 0 6px 25px rgba(255, 107, 157, 0.5);
+        }
+
+        .btn-like.liked {
+            background: linear-gradient(135deg, #ff4757 0%, #ff6b81 100%);
+            animation: pulse 0.3s ease;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+            100% { transform: scale(1.08); }
+        }
+
+        .like-count {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #a0a0c0;
+            font-size: 14px;
+        }
+
+        .like-count .heart {
+            color: #ff6b9d;
+        }
+
+        .dish-item .like-info {
+            font-size: 11px;
+            color: #ff6b9d;
+            margin-left: 8px;
+        }
+
+        .hot-badge {
+            font-size: 10px;
+            background: linear-gradient(135deg, #ff6b9d 0%, #ff8a80 100%);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 8px;
+            margin-left: 6px;
+            animation: hotPulse 2s infinite;
+        }
+
+        @keyframes hotPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: -1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: rgba(102, 126, 234, 0.6);
+            border-radius: 50%;
+            animation: float 15s infinite ease-in-out;
+        }
+
+        .particle:nth-child(odd) {
+            background: rgba(118, 75, 162, 0.5);
+        }
+
+        .particle:nth-child(3n) {
+            background: rgba(255, 107, 157, 0.4);
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .category-filter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .category-tag-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            color: #a0a0c0;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .category-tag-btn:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: rgba(102, 126, 234, 0.3);
+            color: #fff;
+        }
+
+        .category-tag-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: transparent;
+            color: white;
+        }
+
+        .stats-panel {
+            flex: 1;
+            min-width: 250px;
+            max-width: 280px;
+            padding: 20px;
+            background: linear-gradient(145deg, #1e1e2f 0%, #2a2a4a 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            position: sticky;
+            top: 20px;
+        }
+
+        .stats-panel h4 {
+            color: #e0e0f0;
+            margin-bottom: 15px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .top-dishes {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .top-dish-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+        }
+
+        .top-dish-rank {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .top-dish-rank.gold {
+            background: linear-gradient(135deg, #ffd700 0%, #ffaa00 100%);
+        }
+
+        .top-dish-rank.silver {
+            background: linear-gradient(135deg, #c0c0c0 0%, #a0a0a0 100%);
+        }
+
+        .top-dish-rank.bronze {
+            background: linear-gradient(135deg, #cd7f32 0%, #b87333 100%);
+        }
+
+        .top-dish-name {
+            flex: 1;
+            color: #e0e0f0;
+            font-size: 14px;
+        }
+
+        .top-dish-score {
+            color: #ff6b9d;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #707090;
+            margin-top: 4px;
+        }
+
+        .preference-chart {
+            margin-top: 15px;
+        }
+
+        .preference-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .preference-label {
+            width: 50px;
+            font-size: 12px;
+            color: #a0a0c0;
+        }
+
+        .preference-track {
+            flex: 1;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .preference-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .preference-fill.荤菜 { background: linear-gradient(90deg, #ff6b6b, #ee5a5a); }
+        .preference-fill.素菜 { background: linear-gradient(90deg, #4ecdc4, #44a08d); }
+        .preference-fill.汤类 { background: linear-gradient(90deg, #667eea, #764ba2); }
+        .preference-fill.主食 { background: linear-gradient(90deg, #f093fb, #f5576c); }
+        .preference-fill.甜点 { background: linear-gradient(90deg, #ffecd2, #fcb69f); }
+
+        .preference-value {
+            width: 30px;
+            font-size: 11px;
+            color: #888;
+            text-align: right;
+        }
+
+        .time-indicator {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .time-indicator .time-icon {
+            font-size: 1.5rem;
+        }
+
+        .time-indicator .time-text {
+            color: #e0e0f0;
+            font-size: 1rem;
+        }
+
+        .time-indicator .time-period {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .dislike-section {
+            margin-top: 10px;
+        }
+
+        .btn-dislike {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #888;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-dislike:hover {
+            background: rgba(255, 107, 107, 0.2);
+            color: #ff6b6b;
+            border-color: rgba(255, 107, 107, 0.3);
+        }
+
+        .btn-dislike.disliked {
+            background: rgba(255, 107, 107, 0.3);
+            color: #ff6b6b;
+            border-color: #ff6b6b;
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-reroll {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 24px;
+            background: rgba(102, 126, 234, 0.2);
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-reroll:hover {
+            background: rgba(102, 126, 234, 0.3);
+            transform: scale(1.05);
+        }
+
+        .dish-item .dislike-info {
+            font-size: 11px;
+            color: #888;
+            margin-left: 8px;
+            text-decoration: line-through;
+        }
+
+        @media (max-width: 900px) {
+            .main-wrapper {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .container {
+                width: 100%;
+                max-width: 500px;
+            }
+            
+            .stats-panel {
+                width: 100%;
+                max-width: 500px;
+                position: static;
+                margin-top: 20px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 25px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .category-filter {
+                gap: 6px;
+            }
+            
+            .category-tag-btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            
+            .stats-summary {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 8px;
+            }
+            
+            .stat-value {
+                font-size:1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+    
+    <div class="main-wrapper">
+        <div class="container">
+            <h1>🍽️ 今天吃什么？</h1>
+            
+            <div class="time-indicator" id="timeIndicator">
+                <span class="time-icon" id="timeIcon">🌞</span>
+                <span class="time-text">现在是<span class="time-period" id="timePeriod">午餐</span>时间</span>
+            </div>
+            
+            <div class="category-filter" id="categoryFilter">
+                <button class="category-tag-btn active" data-category="all">全部</button>
+                <button class="category-tag-btn" data-category="荤菜">🥩 荤菜</button>
+                <button class="category-tag-btn" data-category="素菜">🥬 素菜</button>
+                <button class="category-tag-btn" data-category="汤类">🍲 汤类</button>
+                <button class="category-tag-btn" data-category="主食">🍚 主食</button>
+                <button class="category-tag-btn" data-category="甜点">🍰 甜点</button>
+            </div>
+            
+            <div class="input-group">
+                <label for="exclude">忌口食材（用逗号分隔）</label>
+                <input type="text" id="exclude" placeholder="例如：香菜, 葱, 蒜">
+            </div>
+
+            <button class="btn btn-primary" id="recommendBtn">🎲 随机推荐</button>
+            <button class="btn btn-secondary" id="manageBtn">⚙️ 管理菜品</button>
+
+            <div class="result" id="result">
+                <div class="dish-name" id="dishName"></div>
+                <div class="dish-category" id="dishCategory"></div>
+                <div class="like-section">
+                    <button class="btn-like" id="likeBtn">
+                        <span>❤️</span>
+                        <span>点赞</span>
+                    </button>
+                    <div class="like-count">
+                        <span class="heart">❤️</span>
+                        <span id="currentLikes">0</span>
+                        <span>赞</span>
+                    </div>
+                </div>
+                <div class="dislike-section">
+                    <button class="btn-dislike" id="dislikeBtn">
+                        <span>👎</span>
+                        <span>不喜欢，换掉</span>
+                    </button>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn-reroll" id="rerollBtn">🔄 换一个</button>
+                </div>
+            </div>
+
+            <div class="manage-section" id="manageSection" style="display: none;">
+                <h3>添加新菜品</h3>
+                <div class="add-dish-form">
+                    <input type="text" id="newDish" placeholder="菜品名称">
+                    <select id="newCategory">
+                        <option value="荤菜">荤菜</option>
+                        <option value="素菜">素菜</option>
+                        <option value="汤类">汤类</option>
+                        <option value="主食">主食</option>
+                        <option value="甜点">甜点</option>
+                    </select>
+                    <button class="btn btn-primary btn-small" id="addDishBtn">添加</button>
+                </div>
+
+                <h3>菜品列表</h3>
+                <div class="dish-list" id="dishList"></div>
+                <div class="stats" id="stats"></div>
+            </div>
+        </div>
+
+        <div class="stats-panel" id="statsPanel">
+            <h4>📊 数据统计</h4>
+            <div class="top-dishes" id="topDishes"></div>
+            <div class="preference-chart" id="preferenceChart"></div>
+            <div class="stats-summary" id="statsSummary"></div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://hzghqxigvjrhuxgboyir.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6Z2hxeGlndmpyaHV4Z2JveWlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMzcwODEsImV4cCI6MjA4ODYxMzA4MX0.O8rjG9i7ss6wzgHOw6OHqsU54WaDT-FEBgw_X9SKHlk';
+
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let currentDish = null;
+        let selectedCategory = 'all';
+        let dishesCache = null;
+        let likesCache = {};
+        let dislikesCache = {};
+
+        const TIME_PERIODS = {
+            breakfast: { name: '早餐', icon: '🌅', start: 5, end: 10, categories: ['主食', '汤类'] },
+            lunch: { name: '午餐', icon: '🌞', start: 10, end: 14, categories: ['荤菜', '素菜', '主食', '汤类'] },
+            afternoon: { name: '下午茶', icon: '☕', start: 14, end: 17, categories: ['甜点', '主食'] },
+            dinner: { name: '晚餐', icon: '🌙', start: 17, end: 22, categories: ['荤菜', '素菜', '主食', '汤类'] },
+            lateNight: { name: '夜宵', icon: '🌃', start: 22, end: 5, categories: ['主食', '汤类'] }
+        };
+
+        function createParticles() {
+            const container = document.getElementById('particles');
+            const particleCount = 30;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 15 + 's';
+                particle.style.animationDuration = (10 + Math.random() * 10) + 's';
+                particle.style.width = (2 + Math.random() * 4) + 'px';
+                particle.style.height = particle.style.width;
+                container.appendChild(particle);
+            }
+        }
+
+        function initCategoryFilter() {
+            const buttons = document.querySelectorAll('.category-tag-btn');
+            buttons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    buttons.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    selectedCategory = this.dataset.category;
+                    updateStatsPanel();
+                });
+            });
+        }
+
+        function initButtons() {
+            const recommendBtn = document.getElementById('recommendBtn');
+            const manageBtn = document.getElementById('manageBtn');
+            const likeBtn = document.getElementById('likeBtn');
+            const dislikeBtn = document.getElementById('dislikeBtn');
+            const rerollBtn = document.getElementById('rerollBtn');
+            const addDishBtn = document.getElementById('addDishBtn');
+            const newDishInput = document.getElementById('newDish');
+            
+            if (recommendBtn) {
+                recommendBtn.addEventListener('click', function() {
+                    console.log('随机推荐按钮被点击');
+                    recommend();
+                });
+            } else {
+                console.error('找不到 recommendBtn 元素');
+            }
+            
+            if (manageBtn) {
+                manageBtn.addEventListener('click', function() {
+                    console.log('管理菜品按钮被点击');
+                    toggleManage();
+                });
+            } else {
+                console.error('找不到 manageBtn 元素');
+            }
+            
+            if (likeBtn) {
+                likeBtn.addEventListener('click', function() {
+                    console.log('点赞按钮被点击');
+                    likeCurrentDish();
+                });
+            }
+            
+            if (dislikeBtn) {
+                dislikeBtn.addEventListener('click', function() {
+                    console.log('不喜欢按钮被点击');
+                    dislikeCurrentDish();
+                });
+            }
+            
+            if (rerollBtn) {
+                rerollBtn.addEventListener('click', function() {
+                    console.log('换一个按钮被点击');
+                    recommend();
+                });
+            }
+            
+            if (addDishBtn) {
+                addDishBtn.addEventListener('click', function() {
+                    console.log('添加菜品按钮被点击');
+                    addDish();
+                });
+            }
+            
+            if (newDishInput) {
+                newDishInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        console.log('输入框回车');
+                        addDish();
+                    }
+                });
+            }
+        }
+
+        function getCurrentPeriod() {
+            const hour = new Date().getHours();
+            
+            // 夜宵时段（22:00 - 05:00）跨午夜，需要特殊处理
+            if (hour >= 22 || hour < 5) {
+                return { key: 'lateNight', ...TIME_PERIODS.lateNight };
+            }
+            
+            // 其他时段按顺序判断
+            if (hour >= 5 && hour < 10) {
+                return { key: 'breakfast', ...TIME_PERIODS.breakfast };
+            }
+            if (hour >= 10 && hour < 14) {
+                return { key: 'lunch', ...TIME_PERIODS.lunch };
+            }
+            if (hour >= 14 && hour < 17) {
+                return { key: 'afternoon', ...TIME_PERIODS.afternoon };
+            }
+            if (hour >= 17 && hour < 22) {
+                return { key: 'dinner', ...TIME_PERIODS.dinner };
+            }
+            
+            // 默认返回午餐
+            return { key: 'lunch', ...TIME_PERIODS.lunch };
+        }
+
+        function updateTimeIndicator() {
+            const period = getCurrentPeriod();
+            document.getElementById('timeIcon').textContent = period.icon;
+            document.getElementById('timePeriod').textContent = period.name;
+        }
+
+        async function getDishes() {
+            if (dishesCache) return dishesCache;
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('dishes')
+                    .select('*')
+                    .order('created_at', { ascending: true });
+                
+                if (error) {
+                    console.error('获取菜品失败:', error);
+                    return [];
+                }
+                
+                dishesCache = data || [];
+                return dishesCache;
+            } catch (err) {
+                console.error('获取菜品异常:', err);
+                return [];
+            }
+        }
+
+        async function saveDish(dish) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('dishes')
+                    .insert([dish])
+                    .select();
+                
+                if (error) {
+                    console.error('保存菜品失败:', error);
+                    return false;
+                }
+                
+                dishesCache = null;
+                return data[0];
+            } catch (err) {
+                console.error('保存菜品异常:', err);
+                return false;
+            }
+        }
+
+        async function deleteDishFromDB(dishName) {
+            try {
+                const { error } = await supabaseClient
+                    .from('dishes')
+                    .delete()
+                    .eq('name', dishName);
+                
+                if (error) {
+                    console.error('删除菜品失败:', error);
+                    return false;
+                }
+                
+                dishesCache = null;
+                return true;
+            } catch (err) {
+                console.error('删除菜品异常:', err);
+                return false;
+            }
+        }
+
+        async function getLikes() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('dish_likes')
+                    .select('*');
+                
+                if (error) {
+                    console.error('获取点赞失败:', error);
+                    return {};
+                }
+                
+                const likesMap = {};
+                (data || []).forEach(item => {
+                    likesMap[item.dish_name] = item.like_count;
+                });
+                
+                likesCache = likesMap;
+                return likesMap;
+            } catch (err) {
+                console.error('获取点赞异常:', err);
+                return {};
+            }
+        }
+
+        async function saveLike(dishName) {
+            try {
+                const { data: existing, error: selectError } = await supabaseClient
+                    .from('dish_likes')
+                    .select('*')
+                    .eq('dish_name', dishName)
+                    .single();
+                
+                if (existing) {
+                    const { error } = await supabaseClient
+                        .from('dish_likes')
+                        .update({ like_count: existing.like_count + 1, updated_at: new Date().toISOString() })
+                        .eq('dish_name', dishName);
+                    
+                    if (error) {
+                        console.error('更新点赞失败:', error);
+                        return false;
+                    }
+                    
+                    likesCache[dishName] = existing.like_count + 1;
+                    return true;
+                } else {
+                    const { data, error } = await supabaseClient
+                        .from('dish_likes')
+                        .insert([{ dish_name: dishName, like_count: 1 }])
+                        .select();
+                    
+                    if (error) {
+                        console.error('插入点赞失败:', error);
+                        return false;
+                    }
+                    
+                    likesCache[dishName] = 1;
+                    return true;
+                }
+            } catch (err) {
+                console.error('保存点赞异常:', err);
+                return false;
+            }
+        }
+
+        async function getDislikes() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('dish_dislikes')
+                    .select('*');
+                
+                if (error) {
+                    console.error('获取不喜欢失败:', error);
+                    return {};
+                }
+                
+                const dislikesMap = {};
+                (data || []).forEach(item => {
+                    dislikesMap[item.dish_name] = item.dislike_count;
+                });
+                
+                dislikesCache = dislikesMap;
+                return dislikesMap;
+            } catch (err) {
+                console.error('获取不喜欢异常:', err);
+                return {};
+            }
+        }
+
+        async function saveDislike(dishName) {
+            try {
+                const { data: existing, error: selectError } = await supabaseClient
+                    .from('dish_dislikes')
+                    .select('*')
+                    .eq('dish_name', dishName)
+                    .single();
+                
+                if (existing) {
+                    const { error } = await supabaseClient
+                        .from('dish_dislikes')
+                        .update({ dislike_count: existing.dislike_count + 1, updated_at: new Date().toISOString() })
+                        .eq('dish_name', dishName);
+                    
+                    if (error) {
+                        console.error('更新不喜欢失败:', error);
+                        return false;
+                    }
+                    
+                    dislikesCache[dishName] = existing.dislike_count + 1;
+                    return true;
+                } else {
+                    const { data, error } = await supabaseClient
+                        .from('dish_dislikes')
+                        .insert([{ dish_name: dishName, dislike_count: 1 }])
+                        .select();
+                    
+                    if (error) {
+                        console.error('插入不喜欢失败:', error);
+                        return false;
+                    }
+                    
+                    dislikesCache[dishName] = 1;
+                    return true;
+                }
+            } catch (err) {
+                console.error('保存不喜欢异常:', err);
+                return false;
+            }
+        }
+
+        async function deleteLikeAndDislike(dishName) {
+            try {
+                await supabaseClient.from('dish_likes').delete().eq('dish_name', dishName);
+                await supabaseClient.from('dish_dislikes').delete().eq('dish_name', dishName);
+                
+                delete likesCache[dishName];
+                delete dislikesCache[dishName];
+            } catch (err) {
+                console.error('删除点赞/不喜欢异常:', err);
+            }
+        }
+
+        function getDishLikes(dishName) {
+            return likesCache[dishName] || 0;
+        }
+
+        function getDishDislikes(dishName) {
+            return dislikesCache[dishName] || 0;
+        }
+
+        async function likeCurrentDish() {
+            if (!currentDish) return;
+            
+            await saveLike(currentDish.name);
+            
+            const btn = document.getElementById('likeBtn');
+            btn.classList.add('liked');
+            setTimeout(() => btn.classList.remove('liked'), 300);
+            
+            updateLikeDisplay(currentDish.name);
+            updateStatsPanel();
+        }
+
+        async function dislikeCurrentDish() {
+            if (!currentDish) return;
+            
+            await saveDislike(currentDish.name);
+            
+            const btn = document.getElementById('dislikeBtn');
+            btn.classList.add('disliked');
+            setTimeout(() => btn.classList.remove('disliked'), 300);
+            
+            updateStatsPanel();
+            setTimeout(() => recommend(), 500);
+        }
+
+        function updateLikeDisplay(dishName) {
+            const count = getDishLikes(dishName);
+            document.getElementById('currentLikes').textContent = count;
+        }
+
+        function weightedRandom(dishes) {
+            const weights = dishes.map(dish => {
+                const likeCount = likesCache[dish.name] || 0;
+                const dislikeCount = dislikesCache[dish.name] || 0;
+                const baseWeight = 1;
+                const likeBonus = likeCount * 0.5;
+                const dislikePenalty = dislikeCount * 0.8;
+                return Math.max(0.1, baseWeight + likeBonus - dislikePenalty);
+            });
+            
+            const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+            let random = Math.random() * totalWeight;
+            
+            for (let i = 0; i < dishes.length; i++) {
+                random -= weights[i];
+                if (random <= 0) {
+                    return dishes[i];
+                }
+            }
+            
+            return dishes[dishes.length - 1];
+        }
+
+        async function recommend() {
+            const excludeInput = document.getElementById('exclude').value;
+            const excludes = excludeInput.split(/[,，]/).map(s => s.trim()).filter(s => s);
+            
+            const dishes = await getDishes();
+            const period = getCurrentPeriod();
+            
+            let available = dishes.filter(dish => {
+                const matchExclude = !excludes.some(ex => dish.name.includes(ex));
+                const matchCategory = selectedCategory === 'all' || dish.category === selectedCategory;
+                return matchExclude && matchCategory;
+            });
+
+            if (period.key !== 'lunch' && period.key !== 'dinner') {
+                const periodPreferred = available.filter(dish => 
+                    period.categories.includes(dish.category) || dish.breakfast
+                );
+                if (periodPreferred.length > 0) {
+                    available = periodPreferred;
+                }
+            }
+
+            if (available.length === 0) {
+                alert('没有符合条件的菜品，请调整忌口或添加更多菜品！');
+                return;
+            }
+
+            currentDish = weightedRandom(available);
+
+            document.getElementById('dishName').textContent = currentDish.name;
+            document.getElementById('dishCategory').textContent = `【${currentDish.category}】`;
+            document.getElementById('result').classList.add('show');
+            
+            updateLikeDisplay(currentDish.name);
+        }
+
+        async function toggleManage() {
+            console.log('toggleManage 被调用');
+            const section = document.getElementById('manageSection');
+            console.log('manageSection 元素:', section);
+            console.log('当前 display 状态:', section.style.display);
+            
+            if (section.style.display === 'none' || section.style.display === '') {
+                section.style.display = 'block';
+                console.log('显示管理面板');
+                await renderDishList();
+            } else {
+                section.style.display = 'none';
+                console.log('隐藏管理面板');
+            }
+        }
+
+        async function addDish() {
+            const nameInput = document.getElementById('newDish');
+            const categorySelect = document.getElementById('newCategory');
+            
+            const name = nameInput.value.trim();
+            const category = categorySelect.value;
+
+            if (!name) {
+                alert('请输入菜品名称！');
+                return;
+            }
+
+            const result = await saveDish({ name, category });
+            
+            if (result) {
+                nameInput.value = '';
+                await renderDishList();
+                await updateStatsPanel();
+            } else {
+                alert('添加菜品失败，请检查是否已存在同名菜品！');
+            }
+        }
+
+        async function deleteDish(index) {
+            const dishes = await getDishes();
+            const dishName = dishes[index].name;
+            
+            const success = await deleteDishFromDB(dishName);
+            if (success) {
+                await deleteLikeAndDislike(dishName);
+                await renderDishList();
+                await updateStatsPanel();
+            } else {
+                alert('删除菜品失败！');
+            }
+        }
+
+        async function renderDishList() {
+            try {
+                const dishes = await getDishes();
+                const listEl = document.getElementById('dishList');
+                
+                if (!dishes || dishes.length === 0) {
+                    listEl.innerHTML = '<div class="dish-item"><span style="color: #888;">暂无菜品数据</span></div>';
+                    document.getElementById('stats').textContent = '共 0 道菜';
+                    return;
+                }
+                
+                const sortedDishes = [...dishes].map((dish, originalIndex) => ({
+                    ...dish,
+                    originalIndex,
+                    likes: likesCache[dish.name] || 0,
+                    dislikes: dislikesCache[dish.name] || 0,
+                    score: (likesCache[dish.name] || 0) - (dislikesCache[dish.name] || 0)
+                })).sort((a, b) => b.score - a.score);
+                
+                listEl.innerHTML = sortedDishes.map((dish) => {
+                    const likeInfo = dish.likes > 0 ? `<span class="like-info">❤️ ${dish.likes}</span>` : '';
+                    const dislikeInfo = dish.dislikes > 0 ? `<span class="dislike-info">👎 ${dish.dislikes}</span>` : '';
+                    const hotBadge = dish.score >= 3 ? '<span class="hot-badge">🔥热门</span>' : '';
+                    return `
+                        <div class="dish-item">
+                            <span>${dish.name}<span class="category-tag">${dish.category}</span>${likeInfo}${dislikeInfo}${hotBadge}</span>
+                            <button class="btn-delete" onclick="deleteDish(${dish.originalIndex})">删除</button>
+                        </div>
+                    `;
+                }).join('');
+
+                document.getElementById('stats').textContent = `共 ${dishes.length} 道菜`;
+            } catch (err) {
+                console.error('渲染菜品列表失败:', err);
+                const listEl = document.getElementById('dishList');
+                listEl.innerHTML = '<div class="dish-item"><span style="color: #ff6b6b;">加载失败，请检查数据库连接</span></div>';
+            }
+        }
+
+        async function updateStatsPanel() {
+            const dishes = await getDishes();
+            const topDishesEl = document.getElementById('topDishes');
+            const preferenceChartEl = document.getElementById('preferenceChart');
+            const statsSummaryEl = document.getElementById('statsSummary');
+            
+            const scoredDishes = dishes.map(dish => ({
+                name: dish.name,
+                category: dish.category,
+                score: (likesCache[dish.name] || 0) - (dislikesCache[dish.name] || 0),
+                likes: likesCache[dish.name] || 0
+            })).sort((a, b) => b.score - a.score).slice(0, 5);
+            
+            topDishesEl.innerHTML = scoredDishes.map((dish, index) => {
+                let rankClass = '';
+                if (index === 0) rankClass = 'gold';
+                else if (index === 1) rankClass = 'silver';
+                else if (index === 2) rankClass = 'bronze';
+                
+                return `
+                    <div class="top-dish-item">
+                        <span class="top-dish-rank ${rankClass}">${index + 1}</span>
+                        <span class="top-dish-name">${dish.name}</span>
+                        <span class="top-dish-score">❤️ ${dish.likes}</span>
+                    </div>
+                `;
+            }).join('');
+            
+            const categories = ['荤菜', '素菜', '汤类', '主食', '甜点'];
+            const categoryLikes = {};
+            categories.forEach(cat => categoryLikes[cat] = 0);
+            
+            dishes.forEach(dish => {
+                categoryLikes[dish.category] = (categoryLikes[dish.category] || 0) + (likesCache[dish.name] || 0);
+            });
+            
+            const maxLikes = Math.max(...Object.values(categoryLikes), 1);
+            
+            preferenceChartEl.innerHTML = `
+                <h4 style="color: #a0a0c0; font-size: 13px; margin-bottom: 12px;">📈 偏好分析</h4>
+                ${categories.map(cat => `
+                    <div class="preference-bar">
+                        <span class="preference-label">${cat}</span>
+                        <div class="preference-track">
+                            <div class="preference-fill ${cat}" style="width: ${(categoryLikes[cat] / maxLikes) * 100}%"></div>
+                        </div>
+                        <span class="preference-value">${categoryLikes[cat]}</span>
+                    </div>
+                `).join('')}
+            `;
+            
+            const totalLikes = Object.values(likesCache).reduce((a, b) => a + b, 0);
+            const totalDislikes = Object.values(dislikesCache).reduce((a, b) => a + b, 0);
+            
+            statsSummaryEl.innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-value">${dishes.length}</div>
+                    <div class="stat-label">菜品总数</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${totalLikes}</div>
+                    <div class="stat-label">总点赞</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${totalDislikes}</div>
+                    <div class="stat-label">总踩数</div>
+                </div>
+            `;
+        }
+
+        async function init() {
+            try {
+                console.log('初始化应用...');
+                
+                await getLikes();
+                console.log('点赞数据加载完成');
+                
+                await getDislikes();
+                console.log('不喜欢数据加载完成');
+                
+                await getDishes();
+                console.log('菜品数据加载完成');
+                
+                createParticles();
+                initCategoryFilter();
+                initButtons();
+                updateTimeIndicator();
+                await updateStatsPanel();
+                console.log('统计面板更新完成');
+                
+                setInterval(updateTimeIndicator, 60000);
+                
+                console.log('应用初始化成功！');
+            } catch (err) {
+                console.error('初始化失败:', err);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
