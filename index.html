@@ -723,6 +723,141 @@
                 font-size:1.2rem;
             }
         }
+
+        .btn-recipe {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 24px;
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-recipe:hover {
+            background: rgba(255, 193, 7, 0.3);
+            transform: scale(1.05);
+        }
+
+        .btn-recipe:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .recipe-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 152, 0, 0.1) 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 193, 7, 0.2);
+        }
+
+        .recipe-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .recipe-header h3 {
+            color: #ffc107;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        .btn-close-recipe {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #888;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-close-recipe:hover {
+            background: rgba(255, 107, 107, 0.3);
+            color: #ff6b6b;
+        }
+
+        .recipe-content {
+            min-height: 100px;
+        }
+
+        .recipe-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px;
+            color: #a0a0c0;
+        }
+
+        .recipe-loading.hidden {
+            display: none;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 193, 7, 0.3);
+            border-top-color: #ffc107;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .recipe-text {
+            color: #e0e0f0;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+
+        .recipe-text.hidden {
+            display: none;
+        }
+
+        .recipe-text h4 {
+            color: #ffc107;
+            margin: 15px 0 10px 0;
+            font-size: 1rem;
+        }
+
+        .recipe-text h4:first-child {
+            margin-top: 0;
+        }
+
+        .recipe-text ul, .recipe-text ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .recipe-text li {
+            margin: 8px 0;
+        }
+
+        .recipe-error {
+            color: #ff6b6b;
+            text-align: center;
+            padding: 20px;
+        }
     </style>
 </head>
 <body>
@@ -776,6 +911,21 @@
                 </div>
                 <div class="action-buttons">
                     <button class="btn-reroll" id="rerollBtn">🔄 换一个</button>
+                    <button class="btn-recipe" id="recipeBtn">📖 做法详解</button>
+                </div>
+                
+                <div class="recipe-section" id="recipeSection" style="display: none;">
+                    <div class="recipe-header">
+                        <h3>📝 做法详解</h3>
+                        <button class="btn-close-recipe" id="closeRecipeBtn">✕</button>
+                    </div>
+                    <div class="recipe-content" id="recipeContent">
+                        <div class="recipe-loading" id="recipeLoading">
+                            <div class="loading-spinner"></div>
+                            <span>正在生成做法详解...</span>
+                        </div>
+                        <div class="recipe-text" id="recipeText"></div>
+                    </div>
                 </div>
             </div>
 
@@ -812,6 +962,75 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh6Z2hxeGlndmpyaHV4Z2JveWlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwMzcwODEsImV4cCI6MjA4ODYxMzA4MX0.O8rjG9i7ss6wzgHOw6OHqsU54WaDT-FEBgw_X9SKHlk';
 
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const QWEN_API_KEY = 'sk-9505a731b78541329842556da83ca62c';
+        const QWEN_API_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+
+        function buildRecipePrompt(dishName) {
+            return `你是一位专业的中式烹饪大师和美食顾问，拥有30年烹饪经验，精通八大菜系，专门为家庭用户提供详细、易懂的菜品制作指导。你的目标是帮助用户在家也能做出餐厅级别的美味佳肴。
+
+## 你的职责范围
+
+**你可以做：**
+- 提供菜品的详细制作步骤
+- 列出准确的食材清单和用量
+- 给出烹饪技巧和小贴士
+- 推荐替代食材和调整方案
+- 解释烹饪原理和注意事项
+
+**你不能做：**
+- 回答与烹饪无关的问题
+- 提供不健康或危险的烹饪方法
+- 推荐过于复杂、家庭难以实现的菜品
+- 使用专业术语而不解释
+
+**遇到不确定的情况：**
+- 如果菜品名称不明确，直接说"请提供更具体的菜品名称"
+- 如果无法确定菜品，返回一个常见做法并说明"这是常见做法，如有不同请告知"
+- 不要猜测或编造不存在的菜品
+
+## 输出格式要求
+
+请严格按照以下 Markdown 格式返回，不要添加任何额外说明：
+
+### 🥘 [菜品名称]
+
+#### 📋 食材准备
+- **主料**：
+  - [食材1] [用量]
+  - [食材2] [用量]
+- **辅料**：
+  - [食材1] [用量]
+  - [食材2] [用量]
+- **调料**：
+  - [调料1] [用量]
+  - [调料2] [用量]
+
+#### 👨‍🍳 制作步骤
+1. **[步骤名称]**：[详细描述]
+2. **[步骤名称]**：[详细描述]
+3. **[步骤名称]**：[详细描述]
+...
+
+#### 💡 烹饪小贴士
+- [技巧1]
+- [技巧2]
+- [技巧3]
+
+#### ⏱️ 预计时间
+- 准备时间：[X]分钟
+- 烹饪时间：[X]分钟
+- 总计时间：[X]分钟
+
+#### 🍽️ 营养价值（可选）
+- 热量：约[X]大卡/份
+- 主要营养成分：[简述]
+
+---
+
+## 用户输入
+菜品名称：${dishName}`;
+        }
 
         let currentDish = null;
         let selectedCategory = 'all';
@@ -861,6 +1080,8 @@
             const likeBtn = document.getElementById('likeBtn');
             const dislikeBtn = document.getElementById('dislikeBtn');
             const rerollBtn = document.getElementById('rerollBtn');
+            const recipeBtn = document.getElementById('recipeBtn');
+            const closeRecipeBtn = document.getElementById('closeRecipeBtn');
             const addDishBtn = document.getElementById('addDishBtn');
             const newDishInput = document.getElementById('newDish');
             
@@ -900,6 +1121,20 @@
                 rerollBtn.addEventListener('click', function() {
                     console.log('换一个按钮被点击');
                     recommend();
+                });
+            }
+            
+            if (recipeBtn) {
+                recipeBtn.addEventListener('click', function() {
+                    console.log('做法详解按钮被点击');
+                    showRecipe();
+                });
+            }
+            
+            if (closeRecipeBtn) {
+                closeRecipeBtn.addEventListener('click', function() {
+                    console.log('关闭做法详解按钮被点击');
+                    closeRecipe();
                 });
             }
             
@@ -1195,6 +1430,101 @@
             document.getElementById('currentLikes').textContent = count;
         }
 
+        function showRecipe() {
+            if (!currentDish) {
+                alert('请先推荐一道菜品！');
+                return;
+            }
+            
+            const recipeSection = document.getElementById('recipeSection');
+            const recipeLoading = document.getElementById('recipeLoading');
+            const recipeText = document.getElementById('recipeText');
+            
+            recipeSection.style.display = 'block';
+            recipeLoading.classList.remove('hidden');
+            recipeText.classList.add('hidden');
+            
+            fetchRecipe(currentDish.name);
+        }
+
+        function closeRecipe() {
+            const recipeSection = document.getElementById('recipeSection');
+            recipeSection.style.display = 'none';
+        }
+
+        async function fetchRecipe(dishName) {
+            const recipeLoading = document.getElementById('recipeLoading');
+            const recipeText = document.getElementById('recipeText');
+            const recipeBtn = document.getElementById('recipeBtn');
+            
+            try {
+                console.log('正在获取菜品做法:', dishName);
+                
+                if (recipeBtn) {
+                    recipeBtn.disabled = true;
+                    recipeBtn.textContent = '⏳ 生成中...';
+                }
+                
+                const prompt = buildRecipePrompt(dishName);
+                
+                const response = await fetch(QWEN_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${QWEN_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: 'qwen-turbo',
+                        messages: [
+                            {
+                                role: 'user',
+                                content: prompt
+                            }
+                        ],
+                        temperature: 0.7,
+                        max_tokens: 2000
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('API 调用失败:', errorData);
+                    throw new Error(errorData.message || 'API 调用失败');
+                }
+                
+                const data = await response.json();
+                const content = data.choices[0].message.content;
+                
+                console.log('API 调用成功，Token 使用:', data.usage);
+                
+                recipeLoading.classList.add('hidden');
+                recipeText.classList.remove('hidden');
+                recipeText.innerHTML = formatMarkdown(content);
+                
+            } catch (error) {
+                console.error('获取做法失败:', error);
+                recipeLoading.classList.add('hidden');
+                recipeText.classList.remove('hidden');
+                recipeText.innerHTML = `<div class="recipe-error">获取做法失败：${error.message}<br><small>请稍后重试</small></div>`;
+            } finally {
+                if (recipeBtn) {
+                    recipeBtn.disabled = false;
+                    recipeBtn.textContent = '📖 做法详解';
+                }
+            }
+        }
+
+        function formatMarkdown(text) {
+            return text
+                .replace(/### (.*)/g, '<h3>$1</h3>')
+                .replace(/#### (.*)/g, '<h4>$1</h4>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/- (.*)/g, '<li>$1</li>')
+                .replace(/(\d+)\. (.*)/g, '<li><strong>$1.</strong> $2</li>')
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>');
+        }
+
         function weightedRandom(dishes) {
             const weights = dishes.map(dish => {
                 const likeCount = likesCache[dish.name] || 0;
@@ -1250,6 +1580,9 @@
             document.getElementById('dishName').textContent = currentDish.name;
             document.getElementById('dishCategory').textContent = `【${currentDish.category}】`;
             document.getElementById('result').classList.add('show');
+            
+            // 关闭做法详解区域
+            closeRecipe();
             
             updateLikeDisplay(currentDish.name);
         }
